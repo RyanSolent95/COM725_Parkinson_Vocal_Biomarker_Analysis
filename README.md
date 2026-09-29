@@ -1,102 +1,71 @@
-# COM725_Parkinson_Vocal_Biomarker_Analysis
+COM725_Parkinson_Vocal_Biomarker_Analysis
+A subject-level machine learning framework for non-invasive Parkinson's disease (PD) screening from vocal biomarkers. Supporting code for the paper published in ICCK Transactions on Sensing, Communication, and Control (2026).
 
-A machine learning framework for non-invasive Parkinson's disease (PD) screening using vocal biomarkers extracted from sustained phonation recordings. Supporting code for the journal paper submitted to **ICCK Transactions on Sensing, Communication, and Control**.
-
----
-
-## Overview
-
-Parkinson's disease affects motor control, including the voice. This project investigates whether PD can be reliably detected from acoustic features of voice recordings alone — without requiring specialist equipment or invasive procedures.
+Overview
+Parkinson's disease affects motor control, including the voice, and dopaminergic degeneration produces measurable vocal impairments before overt motor symptoms. This project investigates whether PD can be reliably screened from acoustic features of voice recordings alone, with a deliberate focus on two failures common in prior work: recording-level data leakage and model opacity.
 
 Key components:
-- **22 vocal biomarkers** extracted from sustained vowel phonation (jitter, shimmer, HNR, RPDE, DFA, D2, PPE, NHR, spread1, spread2, and others)
-- **Four ML classifiers** trained and compared: SVM (RBF kernel), Random Forest, K-Nearest Neighbours, Logistic Regression
-- **Bayesian hyperparameter optimisation** for each model
-- **SHAP explainability** to identify the most diagnostically significant features
-- **SMOTE** applied to address class imbalance in training data
 
----
+Subject-level partitioning via GroupKFold to eliminate recording-level data leakage (multiple recordings per subject never span train/test)
+104 participant-level acoustic features derived by multi-statistic aggregation (mean, median, standard deviation, interquartile range) of per-recording measures
+Bayesian hyperparameter optimisation with Optuna
+Models compared: SVM (RBF kernel) - champion - plus Random Forest, XGBoost, Logistic Regression, and an ensemble stack (SVM + XGBoost + RF)
+SHAP explainability to identify the most diagnostically significant features
+A permutation test on the regression task (features → motor severity) that motivated the shift to binary classification
+Results
+Optimised SVM, subject-level GroupKFold cross-validation:
 
-## Results
+Metric	Value
+Cross-validated accuracy	90.00%
+Sensitivity	95.00%
+Specificity	85.00%
+Youden's J	0.80
+Brier score	0.1049
+Benchmark (baseline)	77.50%
+External validation (held-out vowel-only cohort) sensitivity	85.71%
+The optimised SVM improved on the 77.50% benchmark by 12.5 percentage points. A permutation test (p = 0.349) found no significant linear mapping between acoustic features and motor severity, motivating the binary screening formulation over regression.
 
-| Model | Accuracy | Sensitivity | Specificity | F1 Score |
-|-------|----------|-------------|-------------|----------|
-| SVM (RBF) | **97.4%** | **97.6%** | **97.2%** | **97.4%** |
-| Random Forest | 95.9% | 96.1% | 95.6% | 95.8% |
-| KNN | 94.9% | 95.2% | 94.3% | 94.8% |
-| Logistic Regression | 88.7% | 89.1% | 87.8% | 88.6% |
+Dataset
+Parkinson's Speech Dataset with Multiple Types of Sound Recordings (Sakar et al., 2013), UCI Machine Learning Repository (dataset 301).
 
-Evaluated using 5-fold stratified cross-validation on the UCI Parkinson's dataset.
+40 training subjects and 28 blind-test subjects
+Multiple recording types per subject (sustained vowels, words, sentences)
+Source: https://archive.ics.uci.edu/dataset/301/parkinson+speech+dataset+with+multiple+types+of+sound+recordings
+Sakar, B. E., Isenkul, M. E., Sakar, C. O., Sertbas, A., Gurgen, F., Delil, S., ... & Kursun, O. (2013). Collection and analysis of a Parkinson speech dataset with multiple types of sound recordings. IEEE Journal of Biomedical and Health Informatics, 17(4), 828–834. https://doi.org/10.1109/JBHI.2013.2245674
 
----
-
-## Dataset
-
-**UCI Parkinson's Telemonitoring Dataset**
-- 195 voice recordings from 31 subjects (23 with PD, 8 healthy controls)
-- 22 acoustic features per recording
-- Source: [UCI Machine Learning Repository](https://archive.ics.uci.edu/dataset/174/parkinsons)
-
-> Little, M.A., McSharry, P.E., Roberts, S.J., Costello, D.A.E., Moroz, I.M. (2007). Exploiting nonlinear recurrence and fractal scaling properties for voice disorder detection. *BioMedical Engineering OnLine*, 6(1), 23. https://doi.org/10.1186/1475-925X-6-23
-
----
-
-## Repository Structure
-
-```
+Repository Structure
 COM725_Parkinson_Vocal_Biomarker_Analysis/
-├── COM725_Parkinson_Analysis_Ryan-Wyton.ipynb   # Main analysis notebook
+├── COM725_Parkinson_Analysis_Ryan-Wyton.ipynb   # Main analysis notebook (four-phase framework)
 ├── Colab Required Files/
-│   ├── train_data.txt                           # Training split
-│   ├── test_data.txt                            # Test split
+│   ├── train_data.txt                           # Sakar 2013 training subjects
+│   ├── test_data.txt                            # Sakar 2013 blind-test subjects
 │   ├── parkinsons_pipeline_overview.svg         # Pipeline diagram (overview)
 │   └── parkinsons_pipeline_detailed.svg         # Pipeline diagram (detailed)
 ├── .gitignore
 ├── LICENSE
 └── README.md
-```
-
----
-
-## How to Run
-
-### Option 1 — Google Colab (Recommended)
-
-1. Open `COM725_Parkinson_Analysis_Ryan-Wyton.ipynb` in [Google Colab](https://colab.research.google.com/)
-2. Upload the files from `Colab Required Files/` when prompted
-3. Run all cells from top to bottom
-
-### Option 2 — Local (Jupyter)
-
-```bash
-pip install numpy pandas scikit-learn imbalanced-learn shap bayesian-optimization matplotlib seaborn
+How to Run
+Option 1 — Google Colab (recommended)
+Open COM725_Parkinson_Analysis_Ryan-Wyton.ipynb in Google Colab
+Upload the files from Colab Required Files/ when prompted
+Run all cells from top to bottom
+Option 2 — Local (Jupyter)
+pip install numpy pandas scikit-learn xgboost optuna shap scipy matplotlib seaborn
 jupyter notebook COM725_Parkinson_Analysis_Ryan-Wyton.ipynb
-```
+Key Findings
+SHAP analysis identified the primary diagnostic drivers as:
 
----
+Interquartile range of degree-of-voice-breaks
+Shimmer amplitude variability
+These aperiodic-phonation measures aligned with neuroacoustic evidence and outweighed conventional single-value jitter/shimmer summaries, underlining the value of the variance-sensitive, participant-level feature aggregation.
 
-## Key Findings
+Paper
+Wyton, R., & Hasan, R. (2026). Non-Invasive Parkinson's Disease Screening from Vocal Biomarkers: A Subject-Level Machine Learning Framework with Bayesian Optimisation and Explainable AI. ICCK Transactions on Sensing, Communication, and Control, 3(3), 197–209. https://doi.org/10.62762/TSCC.2026.365257
 
-SHAP analysis identified the most diagnostically significant features as:
+The analysis code, feature-engineering pipeline, and supporting data files in this repository are the resources referenced in the paper's Data Availability Statement.
 
-1. **PPE** (Pitch Period Entropy) — highest discriminative power
-2. **spread1** — nonlinear measure of fundamental frequency variation
-3. **RPDE** (Recurrence Period Density Entropy)
-4. **DFA** (Detrended Fluctuation Analysis)
-5. **HNR** (Harmonics-to-Noise Ratio)
+Author
+Ryan Wyton, MSc Applied AI & Data Science, Southampton Solent University
 
-These nonlinear features consistently outperformed traditional jitter/shimmer measures in separating PD from healthy controls.
-
----
-
-## Paper
-
-> Wyton, R. & Hasan, R. (2026). *Non-Invasive Parkinson's Disease Screening from Vocal Biomarkers*. ICCK Transactions on Sensing, Communication, and Control. Manuscript TSCC-2026-365257.
-
----
-
-## Author
-
-**Ryan Wyton**
-MSc Applied Artificial Intelligence in Business
-Southampton Solent University
+License
+Released under the MIT License. See LICENSE.
